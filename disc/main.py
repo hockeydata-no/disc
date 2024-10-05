@@ -15,7 +15,7 @@ load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 HOCKEYDATA_HOST = os.getenv("HOCKEYDATA_HOST")
 HOCKEYDATA_API_KEY = os.getenv("HOCKEYDATA_API_KEY")
-HOCKEYLIVE_TEAM_NAME = os.getenv("HOCKEYLIVE_TEAM_NAME")
+HOCKEYDATA_TEAM_NAME = os.getenv("HOCKEYDATA_TEAM_NAME")
 DISPLAYED_TEAM_NAME = os.getenv("DISPLAYED_TEAM_NAME")
 
 ENDPOINTS = {
@@ -47,7 +47,7 @@ intents = discord.Intents.default()
 class HockeyDisc(discord.Client):
     current_score = dict(
         {
-            "team": {"score": 0, "team": HOCKEYLIVE_TEAM_NAME},
+            "team": {"score": 0, "team": HOCKEYDATA_TEAM_NAME},
             "opponent": {"score": 0, "team": "Unknown"},
         }
     )
@@ -142,7 +142,7 @@ class HockeyDisc(discord.Client):
 
         home_team = r["homeTeam"]
         away_team = r["awayTeam"]
-        team_is_home = home_team["team"] == HOCKEYLIVE_TEAM_NAME
+        team_is_home = home_team["team"] == HOCKEYDATA_TEAM_NAME
 
         team = home_team if team_is_home else away_team
         opponent = away_team if team_is_home else home_team
