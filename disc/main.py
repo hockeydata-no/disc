@@ -63,9 +63,12 @@ class HockeyDisc(discord.Client):
         }
     )
 
+    active_match = False
+
     async def _update(self):
         await self.get_match_status()
-        await self.get_score()
+        if self.active_match:
+            await self.get_score()
 
     async def send_embed(self, embed):
         for channel in subscribers.get_channels():
@@ -99,8 +102,10 @@ class HockeyDisc(discord.Client):
                     )
                 ),
             )
+            self.active_match = True
         else:
             await self.change_presence(activity=None)
+            self.active_match = False
 
         if old_status["status"] != r["status"]:
             if r["status"] == MatchStatus.InProgress.value:
