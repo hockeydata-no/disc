@@ -25,12 +25,13 @@ ENDPOINTS = {
 }
 
 FORMAT_MESSAGES = {
-    "goal_home": "{team} scores against {opponent}!\nThe score is now {team} **{team_score} - {opponent_score}** {opponent}",
-    "goal_away": "{opponent} scores against {team}.\nThe score is now {team} **{team_score} - {opponent_score}** {opponent}",
-    "scorer_info": "**{scorer}** scored the goal!",
-    "assist_info": "**{assist}** assisted the goal!",
-    "match_start": "**{team}** vs **{opponent}** in arena _{arena}_",
-    "match_end": "Match ended! Final score is {team} {team_score} - {opponent_score} {opponent}",
+    "goal_home": "The score is now **{team} {team_score} - {opponent_score} {opponent}**",
+    "goal_away": "The score is now **{team} {team_score} - {opponent_score} {opponent}**",
+    "scorer_info": "Goal scorer: **{scorer}**",
+    "assist_info": "Assist: **{assist}**",
+    "match_start": "**{team}** vs **{opponent}** are now playing in **{arena}**",
+    "match_end": "Final score **{team} {team_score} - {opponent_score} {opponent}**",
+    "presence": "{team} {team_score} - {opponent_score} {opponent}",
 }
 
 
@@ -84,7 +85,12 @@ class HockeyDisc(discord.Client):
         if r["status"] == MatchStatus.InProgress.value:
             await self.change_presence(
                 activity=discord.Game(
-                    name=f"{DISPLAYED_TEAM_NAME} {team_score} - {opponent_score} {opponent}"
+                    name=FORMAT_MESSAGES["presence"].format(
+                        team=DISPLAYED_TEAM_NAME,
+                        team_score=team_score,
+                        opponent_score=opponent_score,
+                        opponent=opponent,
+                    )
                 ),
             )
         else:
@@ -176,7 +182,7 @@ class HockeyDisc(discord.Client):
                 print(e)
                 return
             embed = discord.Embed(
-                title="Goal!",
+                title=f"{DISPLAYED_TEAM_NAME} scored!",
                 description=message,
                 color=0x00FF00,
             )
@@ -191,7 +197,7 @@ class HockeyDisc(discord.Client):
                 opponent_score=opponent["score"],
             )
             embed = discord.Embed(
-                title="Oh no!",
+                title=f"{opponent['team']} scored",
                 description=message,
                 color=0xFF0000,
             )
