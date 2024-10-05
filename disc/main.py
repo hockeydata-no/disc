@@ -29,7 +29,7 @@ FORMAT_MESSAGES = {
     "goal_away": "{opponent} scores against {team}.\nThe score is now {team} **{team_score} - {opponent_score}** {opponent}",
     "scorer_info": "**{scorer}** scored the goal!",
     "assist_info": "**{assist}** assisted the goal!",
-    "match_start": "{team} vs {opponent} in arena {arena}",
+    "match_start": "**{team}** vs **{opponent}** in arena _{arena}_",
     "match_end": "Match ended! Final score is {team} {team_score} - {opponent_score} {opponent}",
 }
 
@@ -53,8 +53,8 @@ class HockeyDisc(discord.Client):
     )
 
     async def _update(self):
-        await self.get_score()
         await self.get_match_status()
+        await self.get_score()
 
     async def send_embed(self, embed):
         for channel in subscribers.get_channels():
@@ -65,7 +65,7 @@ class HockeyDisc(discord.Client):
             with open("data/match.json") as f:
                 old_status = json.load(f)
         else:
-            old_status = {"status": MatchStatus.Scheduled}
+            old_status = {"status": MatchStatus.Scheduled.value}
 
         try:
             r = requests.get(ENDPOINTS["status"])
@@ -75,27 +75,42 @@ class HockeyDisc(discord.Client):
             print(e)
             return
 
+        is_home = r["homeTeam"]["fullName"] == HOCKEYDATA_TEAM_NAME
+        opponent = r["awayTeam"]["fullName"] if is_home else r["homeTeam"]["fullName"]
+        venue = r["venue"]["name"]
+        team_score = r["homeGoals"] if is_home else r["awayGoals"]
+        opponent_score = r["awayGoals"] if is_home else r["homeGoals"]
+
+        if r["status"] == MatchStatus.InProgress.value:
+            await self.change_presence(
+                activity=discord.Game(
+                    name=f"{DISPLAYED_TEAM_NAME} {team_score} - {opponent_score} {opponent}"
+                ),
+            )
+        else:
+            await self.change_presence(activity=None)
+
         if old_status["status"] != r["status"]:
-            if r["status"] == MatchStatus.InProgress:
+            if r["status"] == MatchStatus.InProgress.value:
                 embed = discord.Embed(
                     title="Match started!",
                     description=FORMAT_MESSAGES["match_start"].format(
-                        team=r["homeTeam"]["team"],
-                        opponent=r["awayTeam"]["team"],
-                        arena=r["arena"],
+                        team=DISPLAYED_TEAM_NAME,
+                        opponent=opponent,
+                        arena=venue,
                     ),
                     color=0x00FF00,
                 )
                 embed.timestamp = datetime.now(tz=UTC)
                 await self.send_embed(embed)
-            elif r["status"] == MatchStatus.Finished:
+            elif r["status"] == MatchStatus.Finished.value:
                 embed = discord.Embed(
                     title="Match ended!",
                     description=FORMAT_MESSAGES["match_end"].format(
-                        team=r["homeTeam"]["team"],
-                        team_score=r["homeTeam"]["score"],
-                        opponent_score=r["awayTeam"]["score"],
-                        opponent=r["awayTeam"]["team"],
+                        team=DISPLAYED_TEAM_NAME,
+                        team_score=team_score,
+                        opponent_score=opponent_score,
+                        opponent=opponent,
                     ),
                     color=0xFF0000,
                 )
@@ -200,8 +215,8 @@ tree = discord.app_commands.CommandTree(client)
 @client.event
 async def on_ready():
     print(f"Logged in as {client.user.name} ({client.user.id})")
-    await tree.sync()
     client._loop.start()
+    await tree.sync()
 
 
 @tree.command(name="subscribe")
