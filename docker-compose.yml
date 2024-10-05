@@ -1,0 +1,12 @@
+services:
+  hockeydisc:
+    # build: .
+    image: ghcr.io/hockeydata-no/disc:latest
+    container_name: hockeydisc
+    env_file:
+      - .env
+    environment:
+      - TZ=Europe/Oslo
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
