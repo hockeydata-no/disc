@@ -120,7 +120,10 @@ class HockeyDisc(discord.Client):
                 )
                 embed.timestamp = datetime.now(tz=UTC)
                 await self.send_embed(embed)
-            elif r["status"] == MatchStatus.Finished.value:
+            elif (
+                r["status"] == MatchStatus.Finished.value
+                and old_status["status"] == MatchStatus.InProgress.value
+            ):
                 embed = discord.Embed(
                     title="Match ended!",
                     description=FORMAT_MESSAGES["match_end"].format(
