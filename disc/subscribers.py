@@ -17,15 +17,17 @@ def get_channels():
 
 
 def toggle(channel_id: str) -> bool:
+    new_subscriber = True
     with open("data/subscribers.json") as f:
         data = json.load(f)
     if channel_id in data:
         data.remove(channel_id)
-        return False
-    data.append(channel_id)
+        new_subscriber = False
+    else:
+        data.append(channel_id)
     with open("data/subscribers.json", "w") as f:
         json.dump(data, f)
-    return True
+    return new_subscriber
 
 
 initialize()
