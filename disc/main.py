@@ -45,6 +45,16 @@ class MatchStatus(Enum):
 intents = discord.Intents.default()
 
 
+def query(endpoint: str) -> dict:
+    try:
+        r = requests.get(endpoint, headers={"HockeyData-API-Key": HOCKEYDATA_API_KEY})
+        r.raise_for_status()
+        return r.json()
+    except requests.exceptions.RequestException as e:
+        print(e)
+        return {}
+
+
 class HockeyDisc(discord.Client):
     current_score = dict(
         {
@@ -68,12 +78,8 @@ class HockeyDisc(discord.Client):
         else:
             old_status = {"status": MatchStatus.Scheduled.value}
 
-        try:
-            r = requests.get(ENDPOINTS["status"])
-            r.raise_for_status()
-            r = r.json()
-        except requests.exceptions.RequestException as e:
-            print(e)
+        r = query(ENDPOINTS["status"])
+        if not r:
             return
 
         is_home = r["homeTeam"]["fullName"] == HOCKEYDATA_TEAM_NAME
@@ -128,9 +134,9 @@ class HockeyDisc(discord.Client):
 
     @staticmethod
     async def _get_scorer_info() -> str:
-        r = requests.get(ENDPOINTS["goal_scorer"])
-        r.raise_for_status()
-        r = r.json()
+        r = query(ENDPOINTS["goal_scorer"])
+        if not r:
+            raise ValueError("No data")
 
         scorer = r["playerinfo"]["scorer"]
         assists = r["playerinfo"]["assists"]
@@ -153,12 +159,8 @@ class HockeyDisc(discord.Client):
         else:
             old_score = self.current_score
 
-        try:
-            r = requests.get(ENDPOINTS["score"])
-            r.raise_for_status()
-            r = r.json()
-        except requests.exceptions.RequestException as e:
-            print(e)
+        r = query(ENDPOINTS["score"])
+        if not r:
             return
 
         home_team = r["homeTeam"]
@@ -178,9 +180,8 @@ class HockeyDisc(discord.Client):
             try:
                 scorer_info = await self._get_scorer_info()
                 message += "\n" + scorer_info
-            except requests.exceptions.RequestException as e:
-                print(e)
-                return
+            except ValueError:
+                pass
             embed = discord.Embed(
                 title=f"{DISPLAYED_TEAM_NAME} scored!",
                 description=message,
