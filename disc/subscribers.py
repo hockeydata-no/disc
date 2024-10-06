@@ -1,33 +1,54 @@
 import json
 import os
 
+from __init__ import LANGUAGE
 
-def initialize():
+
+def initialize() -> None:
     if not os.path.exists("data"):
         os.mkdir("data")
     if not os.path.exists("data/subscribers.json"):
         with open("data/subscribers.json", "w") as f:
-            json.dump([], f)
+            json.dump({}, f)
 
 
-def get_channels():
+def get_channels() -> dict:
+    # TODO: Use a database instead of a json file
     with open("data/subscribers.json") as f:
         data = json.load(f)
     return data
 
 
-def toggle(channel_id: str) -> bool:
+def get_settings(channel_id: str) -> dict:
+    # TODO: Use a database instead of a json file
+    channel_id = str(channel_id)
+    with open("data/subscribers.json") as f:
+        data = json.load(f)
+    return data.get(channel_id, {"lang": LANGUAGE})
+
+
+def toggle(channel_id: str, lang=LANGUAGE) -> bool:
+    # TODO: Use a database instead of a json file
+    channel_id = str(channel_id)
     new_subscriber = True
     with open("data/subscribers.json") as f:
         data = json.load(f)
-    if channel_id in data:
-        data.remove(channel_id)
+
+    # If the key "channel_id" exists in the dictionary, remove it
+    if str(channel_id) in data.keys():
+        data.pop(channel_id)
         new_subscriber = False
     else:
-        data.append(channel_id)
+        data[channel_id] = dict({"lang": lang})
     with open("data/subscribers.json", "w") as f:
         json.dump(data, f)
     return new_subscriber
+
+
+def get_lang(channel_id: str) -> str:
+    channel_id = str(channel_id)
+    settings = get_settings(channel_id)
+    return settings.get("lang", "en")
 
 
 initialize()

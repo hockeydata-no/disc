@@ -1,78 +1,17 @@
-import json
-import os
-from datetime import datetime, UTC
-from enum import Enum
-
 import discord
-import requests
 from discord.ext import tasks
-from dotenv import load_dotenv
 
+import api_handler as data
 import subscribers
-
-load_dotenv()
-
-DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-HOCKEYDATA_HOST = os.getenv("HOCKEYDATA_HOST")
-HOCKEYDATA_API_KEY = os.getenv("HOCKEYDATA_API_KEY")
-HOCKEYDATA_TEAM_NAME = os.getenv("HOCKEYDATA_TEAM_NAME").split(",")
-DISPLAYED_TEAM_NAME = os.getenv("DISPLAYED_TEAM_NAME")
-DISPLAY_TEAM_NAME_POSSESSIVE = (
-    f"{DISPLAYED_TEAM_NAME}'s"
-    if DISPLAYED_TEAM_NAME[-1] != "s"
-    else f"{DISPLAYED_TEAM_NAME}'"
-)
-
-ENDPOINTS = {
-    "score": f"{HOCKEYDATA_HOST}/live/score?provider=fangroup",
-    "goal_scorer": f"{HOCKEYDATA_HOST}/live/recent-goal-scorer-stats",
-    "status": f"{HOCKEYDATA_HOST}/live/match",
-}
-
-FORMAT_MESSAGES = {
-    "goal_home": "The score is now **{team} {team_score} - {opponent_score} {opponent}**",
-    "goal_away": "The score is now **{team} {team_score} - {opponent_score} {opponent}**",
-    "scorer_info": "Goal scorer: **{scorer}**",
-    "assist_info": "Assist: **{assist}**",
-    "match_start": "**{team}** vs **{opponent}** are now playing in **{arena}**",
-    "match_end": "Final score **{team} {team_score} - {opponent_score} {opponent}**",
-    "presence": "{team} {team_score} - {opponent_score} {opponent}",
-    "next_match": "**{team}** vs **{opponent}** will play in **{venue}, {city}** {timestamp}\n\n{long_datetime}",
-}
-
-
-# TODO: Make a module to retrieve strings (i.e. get_goal_string, get_match_status_string) etc.
-#       and use them in the code instead of hardcoding them, making the discord bot methods more readable
-
-
-class MatchStatus(Enum):
-    InProgress = "InProgress"
-    Scheduled = "Scheduled"
-    Finished = "Finished"
-    Aborted = "Aborted"
-
+from __init__ import DISPLAYED_TEAM_NAME, DISCORD_TOKEN
+from disc.manifest import FORMAT_MESSAGES, SUPPORTED_LANGUAGES
+from disc.models import DiscString
+from models import DiscException
 
 intents = discord.Intents.default()
 
 
-def query(endpoint: str) -> dict:
-    try:
-        r = requests.get(endpoint, headers={"HockeyData-API-Key": HOCKEYDATA_API_KEY})
-        r.raise_for_status()
-        return r.json()
-    except requests.exceptions.RequestException as e:
-        print(e)
-        return {}
-
-
 class HockeyDisc(discord.Client):
-    current_score = dict(
-        {
-            "team": {"score": 0, "team": DISPLAYED_TEAM_NAME},
-            "opponent": {"score": 0, "team": "Unknown"},
-        }
-    )
-
     active_match = False
 
     async def _update(self):
@@ -80,153 +19,43 @@ class HockeyDisc(discord.Client):
         if self.active_match:
             await self.get_score()
 
-    async def send_embed(self, embed):
-        for channel in subscribers.get_channels():
+    async def send_embed(self, discstring: DiscString) -> None:
+        """Send an embed to all subscribed channels"""
+        if not discstring.title_key:
+            return
+        for settings, channel in subscribers.get_channels().items():
+            embed = discstring.embed(lang=settings.get("lang", "en"))
             await self.get_channel(channel).send(embed=embed)
 
-    async def get_match_status(self):
-        if os.path.exists("data/match.json"):
-            with open("data/match.json") as f:
-                old_status = json.load(f)
-        else:
-            old_status = {"status": MatchStatus.Scheduled.value}
-
-        r = query(ENDPOINTS["status"])
-        if not r:
-            return
-
-        is_home = r["homeTeam"]["fullName"] in HOCKEYDATA_TEAM_NAME
-        opponent = r["awayTeam"]["fullName"] if is_home else r["homeTeam"]["fullName"]
-        venue = r["venue"]["name"]
-        team_score = r["homeGoals"] if is_home else r["awayGoals"]
-        opponent_score = r["awayGoals"] if is_home else r["homeGoals"]
-
-        if r["status"] == MatchStatus.InProgress.value:
-            await self.change_presence(
-                activity=discord.Game(
-                    name=FORMAT_MESSAGES["presence"].format(
-                        team=DISPLAYED_TEAM_NAME,
-                        team_score=team_score,
-                        opponent_score=opponent_score,
-                        opponent=opponent,
-                    )
-                ),
-            )
+    async def update_status(self, match_status):
+        """Update the presence of the bot"""
+        if match_status.extra_data.get("active_match"):
+            await self.change_presence(activity=discord.Game(name=match_status.extra_data["presence_string"]))
             self.active_match = True
         else:
             await self.change_presence(activity=None)
             self.active_match = False
 
-        if old_status["status"] != r["status"]:
-            if r["status"] == MatchStatus.InProgress.value:
-                embed = discord.Embed(
-                    title="Match started!",
-                    description=FORMAT_MESSAGES["match_start"].format(
-                        team=DISPLAYED_TEAM_NAME,
-                        opponent=opponent,
-                        arena=venue,
-                    ),
-                    color=0x00FF00,
-                )
-                embed.timestamp = datetime.now(tz=UTC)
-                await self.send_embed(embed)
-            elif (
-                r["status"] == MatchStatus.Finished.value
-                and old_status["status"] == MatchStatus.InProgress.value
-            ):
-                embed = discord.Embed(
-                    title="Match ended!",
-                    description=FORMAT_MESSAGES["match_end"].format(
-                        team=DISPLAYED_TEAM_NAME,
-                        team_score=team_score,
-                        opponent_score=opponent_score,
-                        opponent=opponent,
-                    ),
-                    color=0xFF0000,
-                )
-                embed.timestamp = datetime.now(tz=UTC)
-                await self.send_embed(embed)
-
-        with open("data/match.json", "w") as f:
-            json.dump(r, f)
-
-    @staticmethod
-    async def _get_scorer_info() -> str:
-        r = query(ENDPOINTS["goal_scorer"])
-        if not r:
-            raise ValueError("No data")
-
-        scorer = r["playerinfo"]["scorer"]
-        assists = r["playerinfo"]["assists"]
-
-        scorer_name = f"{scorer['firstName']} {scorer['lastName']}"
-
-        output_message = FORMAT_MESSAGES["scorer_info"].format(scorer=scorer_name)
-        for assist in assists:
-            assist_name = f"{assist['firstName']} {assist['lastName']}"
-            output_message += (
-                f"\n{FORMAT_MESSAGES['assist_info'].format(assist=assist_name)}"
-            )
-
-        return output_message
-
-    async def get_score(self):
-        if os.path.exists("data/score.json"):
-            with open("data/score.json") as f:
-                old_score = json.load(f)
-        else:
-            old_score = self.current_score
-
-        r = query(ENDPOINTS["score"])
-        if not r:
+    async def get_match_status(self):
+        """Get the current match status and update the presence"""
+        try:
+            match_status = data.get_match_status()
+        except DiscException:
+            self.active_match = False
             return
 
-        home_team = r["homeTeam"]
-        away_team = r["awayTeam"]
-        team_is_home = home_team["team"] in HOCKEYDATA_TEAM_NAME
+        await self.update_status(match_status)
 
-        team = home_team if team_is_home else away_team
-        opponent = away_team if team_is_home else home_team
+        # Send the embed if the embed has a title key (only happens during start/end of match)
+        if match_status.title_key:
+            await self.send_embed(match_status)
 
-        if int(old_score["team"]["score"]) < int(team["score"]):
-            message = FORMAT_MESSAGES["goal_home"].format(
-                team=DISPLAYED_TEAM_NAME,
-                opponent=opponent["team"],
-                team_score=team["score"],
-                opponent_score=opponent["score"],
-            )
-            try:
-                scorer_info = await self._get_scorer_info()
-                message += "\n" + scorer_info
-            except ValueError:
-                pass
-            embed = discord.Embed(
-                title=f"{DISPLAYED_TEAM_NAME} scored!",
-                description=message,
-                color=0x00FF00,
-            )
-            embed.timestamp = datetime.now(tz=UTC)
-            await self.send_embed(embed)
-
-        elif int(old_score["opponent"]["score"]) < int(opponent["score"]):
-            message = FORMAT_MESSAGES["goal_away"].format(
-                team=DISPLAYED_TEAM_NAME,
-                opponent=opponent["team"],
-                team_score=team["score"],
-                opponent_score=opponent["score"],
-            )
-            embed = discord.Embed(
-                title=f"{opponent['team']} scored",
-                description=message,
-                color=0xFF0000,
-            )
-            embed.timestamp = datetime.now(tz=UTC)
-            await self.send_embed(embed)
-
-        data = {"team": team, "opponent": opponent}
-        with open("data/score.json", "w") as f:
-            json.dump(data, f)
-        self.current_score = data
+    async def get_score(self):
+        try:
+            score_string = data.get_goal()
+            await self.send_embed(score_string)
+        except DiscException:
+            pass
 
     @tasks.loop(seconds=5)
     async def _loop(self):
@@ -245,75 +74,47 @@ async def on_ready():
 
 
 @tree.command(name="subscribe")
-async def subscribe(ctx):
+async def subscribe(ctx, language: SUPPORTED_LANGUAGES = "en"):
     """Subscribe the current channel to live updates"""
-    subscribing = subscribers.toggle(ctx.channel.id)
+    _lang = subscribers.get_lang(ctx.channel.id)  # TODO: Don't read the file twice
+    subscribing = subscribers.toggle(ctx.channel.id, lang=language)
     if subscribing:
-        await ctx.response.send_message(
-            f"Channel is subscribed. Forza {DISPLAYED_TEAM_NAME}!"
-        )
+        response = FORMAT_MESSAGES[language]["subscribe"].format(team=DISPLAYED_TEAM_NAME)
+        await ctx.response.send_message(response)
     else:
-        await ctx.response.send_message("Channel is now unsubscribed.")
+        response = FORMAT_MESSAGES[_lang]["unsubscribe"]
+        await ctx.response.send_message(response)
 
 
 @tree.command(name="channels")
 async def channels(ctx):
     """List all active channels"""
-    active_channels = [
-        ch for ch in subscribers.get_channels() if ctx.guild.get_channel(ch)
-    ]
-    if not active_channels:
-        embed = discord.Embed(
-            title="Active channels",
-            description="No active channels",
-            color=0xFF0000,
-        )
-        embed.timestamp = datetime.now(tz=UTC)
-    else:
-        embed = discord.Embed(
-            title="Active channels",
-            description="\n".join([f"<#{ch}>" for ch in active_channels]),
-            color=0x00FF00,
-        )
-        embed.timestamp = datetime.now(tz=UTC)
-    await ctx.response.send_message(embed=embed, ephemeral=True)
+    active_channels = [ch for ch in subscribers.get_channels().keys() if ctx.guild.get_channel(int(ch))]
+    discstring = DiscString(
+        title_key="active_channels_title",
+        description_key="no_active_channels",
+        values={"active_channels": "\n".join([f"<#{ch}>" for ch in active_channels])},
+        hex_color=0xFF0000,
+    )
+    if active_channels:
+        discstring.description_key = "active_channels"
+        discstring.hex_color = 0x00FF00
+    await ctx.response.send_message(embed=discstring.embed(lang=subscribers.get_lang(ctx.channel.id)), ephemeral=True)
 
 
 @tree.command(name="next")
 async def next_match(ctx):
     """Get information about the next match"""
-    r = query(ENDPOINTS["status"])
-    if not r:
-        await ctx.response.send_message("No match data found", ephemeral=True)
+    lang = subscribers.get_lang(ctx.channel.id)
+    try:
+        match_string = data.get_next_match()
+        embed = match_string.embed(lang=lang)
+        await ctx.response.send_message(embed=embed)
+    except DiscException:
+        if "no_next_match" not in FORMAT_MESSAGES[lang]:
+            lang = "en"
+        await ctx.response.send_message(FORMAT_MESSAGES[lang]["no_next_match"], ephemeral=True)
         return
-
-    if not r["status"] == MatchStatus.Scheduled.value:
-        await ctx.response.send_message("No scheduled match found", ephemeral=True)
-        return
-
-    tournament_name = r["tournament"]["fullName"]
-    is_home = r["homeTeam"]["fullName"] in HOCKEYDATA_TEAM_NAME
-    opponent = r["awayTeam"]["fullName"] if is_home else r["homeTeam"]["fullName"]
-    venue = r["venue"]["name"]
-    city = r["venue"]["city"]
-    utc_date = datetime.fromisoformat(r["date"])
-    discord_timestamp = f"<t:{int(utc_date.timestamp())}:R>"
-    discord_long_datetime = f"<t:{int(utc_date.timestamp())}:F>"
-
-    embed = discord.Embed(
-        title=f"[{tournament_name}] {DISPLAY_TEAM_NAME_POSSESSIVE} next match",
-        description=FORMAT_MESSAGES["next_match"].format(
-            team=DISPLAYED_TEAM_NAME,
-            opponent=opponent,
-            venue=venue,
-            city=city,
-            timestamp=discord_timestamp,
-            long_datetime=discord_long_datetime,
-        ),
-        color=0xFFA500,
-    )
-    embed.timestamp = datetime.now(tz=UTC)
-    await ctx.response.send_message(embed=embed)
 
 
 client.run(DISCORD_TOKEN)
