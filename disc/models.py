@@ -4,7 +4,7 @@ from enum import Enum
 
 import discord
 
-from disc import LANGUAGE
+from __init__ import LANGUAGE
 from manifest import FORMAT_MESSAGES
 
 

@@ -4,9 +4,8 @@ from discord.ext import tasks
 import api_handler as data
 import subscribers
 from __init__ import DISPLAYED_TEAM_NAME, DISCORD_TOKEN
-from disc.manifest import FORMAT_MESSAGES, SUPPORTED_LANGUAGES
-from disc.models import DiscString
-from models import DiscException
+from manifest import FORMAT_MESSAGES, SUPPORTED_LANGUAGES
+from models import DiscString, DiscException
 
 intents = discord.Intents.default()
 
