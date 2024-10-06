@@ -274,7 +274,7 @@ async def channels(ctx):
     await ctx.response.send_message(embed=embed, ephemeral=True)
 
 
-@tree.command(name="next-match")
+@tree.command(name="next")
 async def next_match(ctx):
     """Get information about the next match"""
     r = query(ENDPOINTS["status"])
