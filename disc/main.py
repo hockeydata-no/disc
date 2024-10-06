@@ -3,7 +3,7 @@ from discord.ext import tasks
 
 import api_handler as data
 import subscribers
-from __init__ import DISPLAYED_TEAM_NAME, DISCORD_TOKEN
+from __init__ import DISPLAYED_TEAM_NAME, DISCORD_TOKEN, LANGUAGE
 from manifest import FORMAT_MESSAGES, SUPPORTED_LANGUAGES
 from models import DiscString, DiscException
 
@@ -73,7 +73,7 @@ async def on_ready():
 
 
 @tree.command(name="subscribe")
-async def subscribe(ctx, language: SUPPORTED_LANGUAGES = "en"):
+async def subscribe(ctx, language: SUPPORTED_LANGUAGES = LANGUAGE):
     """Subscribe the current channel to live updates"""
     _lang = subscribers.get_lang(ctx.channel.id)  # TODO: Don't read the file twice
     subscribing = subscribers.toggle(ctx.channel.id, lang=language)
