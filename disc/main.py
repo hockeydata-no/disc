@@ -15,7 +15,7 @@ load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 HOCKEYDATA_HOST = os.getenv("HOCKEYDATA_HOST")
 HOCKEYDATA_API_KEY = os.getenv("HOCKEYDATA_API_KEY")
-HOCKEYDATA_TEAM_NAME = os.getenv("HOCKEYDATA_TEAM_NAME")
+HOCKEYDATA_TEAM_NAME = os.getenv("HOCKEYDATA_TEAM_NAME").split(",")
 DISPLAYED_TEAM_NAME = os.getenv("DISPLAYED_TEAM_NAME")
 
 ENDPOINTS = {
@@ -32,7 +32,12 @@ FORMAT_MESSAGES = {
     "match_start": "**{team}** vs **{opponent}** are now playing in **{arena}**",
     "match_end": "Final score **{team} {team_score} - {opponent_score} {opponent}**",
     "presence": "{team} {team_score} - {opponent_score} {opponent}",
+    "next_match": "**{team}** vs **{opponent}** will play in **{venue}**\n\n{time} ({timezone})",
 }
+
+
+# TODO: Make a module to retrieve strings (i.e. get_goal_string, get_match_status_string) etc.
+#       and use them in the code instead of hardcoding them, making the discord bot methods more readable
 
 
 class MatchStatus(Enum):
@@ -58,7 +63,7 @@ def query(endpoint: str) -> dict:
 class HockeyDisc(discord.Client):
     current_score = dict(
         {
-            "team": {"score": 0, "team": HOCKEYDATA_TEAM_NAME},
+            "team": {"score": 0, "team": DISPLAYED_TEAM_NAME},
             "opponent": {"score": 0, "team": "Unknown"},
         }
     )
@@ -85,7 +90,7 @@ class HockeyDisc(discord.Client):
         if not r:
             return
 
-        is_home = r["homeTeam"]["fullName"] == HOCKEYDATA_TEAM_NAME
+        is_home = r["homeTeam"]["fullName"] in HOCKEYDATA_TEAM_NAME
         opponent = r["awayTeam"]["fullName"] if is_home else r["homeTeam"]["fullName"]
         venue = r["venue"]["name"]
         team_score = r["homeGoals"] if is_home else r["awayGoals"]
@@ -173,7 +178,7 @@ class HockeyDisc(discord.Client):
 
         home_team = r["homeTeam"]
         away_team = r["awayTeam"]
-        team_is_home = home_team["team"] == HOCKEYDATA_TEAM_NAME
+        team_is_home = home_team["team"] in HOCKEYDATA_TEAM_NAME
 
         team = home_team if team_is_home else away_team
         opponent = away_team if team_is_home else home_team
@@ -266,6 +271,40 @@ async def channels(ctx):
             color=0x00FF00,
         )
         embed.timestamp = datetime.now(tz=UTC)
+    await ctx.response.send_message(embed=embed, ephemeral=True)
+
+
+@tree.command(name="next-match")
+async def next_match(ctx):
+    """Get information about the next match"""
+    r = query(ENDPOINTS["status"])
+    if not r:
+        await ctx.response.send_message("No match data found", ephemeral=True)
+        return
+
+    if not r["status"] == MatchStatus.Scheduled.value:
+        await ctx.response.send_message("No scheduled match found", ephemeral=True)
+        return
+
+    is_home = r["homeTeam"]["fullName"] in HOCKEYDATA_TEAM_NAME
+    opponent = r["awayTeam"]["fullName"] if is_home else r["homeTeam"]["fullName"]
+    venue = r["venue"]["name"]
+    utc_date = datetime.fromisoformat(r["date"])
+    time = utc_date.astimezone().strftime("%d.%m.%Y %H:%M")
+    timezone = utc_date.astimezone().tzinfo
+
+    embed = discord.Embed(
+        title=f"{DISPLAYED_TEAM_NAME}'s next match",
+        description=FORMAT_MESSAGES["next_match"].format(
+            team=DISPLAYED_TEAM_NAME,
+            opponent=opponent,
+            venue=venue,
+            time=time,
+            timezone=timezone,
+        ),
+        color=0xFFA500,
+    )
+    embed.timestamp = datetime.now(tz=UTC)
     await ctx.response.send_message(embed=embed, ephemeral=True)
 
 

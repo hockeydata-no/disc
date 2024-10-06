@@ -1,6 +1,6 @@
 # disc
 
-A discord bot for your favorite hockey team.
+A discord bot for your favorite hockey team. Requires a HockeyData instance running to provide data for the team.
 
 ## Installation (for users of HockeyData API)
 
