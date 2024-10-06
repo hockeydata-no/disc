@@ -32,7 +32,7 @@ FORMAT_MESSAGES = {
     "match_start": "**{team}** vs **{opponent}** are now playing in **{arena}**",
     "match_end": "Final score **{team} {team_score} - {opponent_score} {opponent}**",
     "presence": "{team} {team_score} - {opponent_score} {opponent}",
-    "next_match": "**{team}** vs **{opponent}** will play in **{venue}**\n\n{time} ({timezone})",
+    "next_match": "**{team}** vs **{opponent}** will play in **{venue}, {city}**\n\n**Time**: {time} ({timezone})",
 }
 
 
@@ -289,6 +289,7 @@ async def next_match(ctx):
     is_home = r["homeTeam"]["fullName"] in HOCKEYDATA_TEAM_NAME
     opponent = r["awayTeam"]["fullName"] if is_home else r["homeTeam"]["fullName"]
     venue = r["venue"]["name"]
+    city = r["venue"]["city"]
     utc_date = datetime.fromisoformat(r["date"])
     time = utc_date.astimezone().strftime("%d.%m.%Y %H:%M")
     timezone = utc_date.astimezone().tzinfo
@@ -299,6 +300,7 @@ async def next_match(ctx):
             team=DISPLAYED_TEAM_NAME,
             opponent=opponent,
             venue=venue,
+            city=city,
             time=time,
             timezone=timezone,
         ),
