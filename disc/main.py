@@ -305,7 +305,7 @@ async def next_match(ctx):
         color=0xFFA500,
     )
     embed.timestamp = datetime.now(tz=UTC)
-    await ctx.response.send_message(embed=embed, ephemeral=True)
+    await ctx.response.send_message(embed=embed)
 
 
 client.run(DISCORD_TOKEN)
