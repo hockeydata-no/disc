@@ -17,6 +17,11 @@ HOCKEYDATA_HOST = os.getenv("HOCKEYDATA_HOST")
 HOCKEYDATA_API_KEY = os.getenv("HOCKEYDATA_API_KEY")
 HOCKEYDATA_TEAM_NAME = os.getenv("HOCKEYDATA_TEAM_NAME").split(",")
 DISPLAYED_TEAM_NAME = os.getenv("DISPLAYED_TEAM_NAME")
+DISPLAY_TEAM_NAME_POSSESSIVE = (
+    f"{DISPLAYED_TEAM_NAME}'s"
+    if DISPLAYED_TEAM_NAME[-1] != "s"
+    else f"{DISPLAYED_TEAM_NAME}'"
+)
 
 ENDPOINTS = {
     "score": f"{HOCKEYDATA_HOST}/live/score?provider=fangroup",
@@ -32,7 +37,7 @@ FORMAT_MESSAGES = {
     "match_start": "**{team}** vs **{opponent}** are now playing in **{arena}**",
     "match_end": "Final score **{team} {team_score} - {opponent_score} {opponent}**",
     "presence": "{team} {team_score} - {opponent_score} {opponent}",
-    "next_match": "**{team}** vs **{opponent}** will play in **{venue}, {city}**\n\n**Time**: {time} ({timezone})",
+    "next_match": "**{team}** vs **{opponent}** will play in **{venue}, {city}** {timestamp}\n\n{long_datetime}",
 }
 
 
@@ -286,23 +291,24 @@ async def next_match(ctx):
         await ctx.response.send_message("No scheduled match found", ephemeral=True)
         return
 
+    tournament_name = r["tournament"]["fullName"]
     is_home = r["homeTeam"]["fullName"] in HOCKEYDATA_TEAM_NAME
     opponent = r["awayTeam"]["fullName"] if is_home else r["homeTeam"]["fullName"]
     venue = r["venue"]["name"]
     city = r["venue"]["city"]
     utc_date = datetime.fromisoformat(r["date"])
-    time = utc_date.astimezone().strftime("%d.%m.%Y %H:%M")
-    timezone = utc_date.astimezone().tzinfo
+    discord_timestamp = f"<t:{int(utc_date.timestamp())}:R>"
+    discord_long_datetime = f"<t:{int(utc_date.timestamp())}:F>"
 
     embed = discord.Embed(
-        title=f"{DISPLAYED_TEAM_NAME}'s next match",
+        title=f"[{tournament_name}] {DISPLAY_TEAM_NAME_POSSESSIVE} next match",
         description=FORMAT_MESSAGES["next_match"].format(
             team=DISPLAYED_TEAM_NAME,
             opponent=opponent,
             venue=venue,
             city=city,
-            time=time,
-            timezone=timezone,
+            timestamp=discord_timestamp,
+            long_datetime=discord_long_datetime,
         ),
         color=0xFFA500,
     )
