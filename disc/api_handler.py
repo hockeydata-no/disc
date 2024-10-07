@@ -52,11 +52,11 @@ def get_match_status() -> DiscString:
     just_ended = r["status"] == MatchStatus.Finished.value and old_status["status"] == MatchStatus.InProgress.value
 
     if just_started:
-        discstring.title_key = "Match started!"
+        discstring.title_key = "match_start_title"
         discstring.description_key = "match_start"
         discstring.hex_color = 0x00FF00
     elif just_ended:
-        discstring.title_key = "Match ended!"
+        discstring.title_key = "match_end_title"
         discstring.description_key = "match_end"
         discstring.hex_color = 0xFF0000
 
