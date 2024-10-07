@@ -20,7 +20,7 @@ class DiscException(Exception):
 
 
 @dataclass
-class DiscString:
+class DiscEmbed:
     title_key: str = None
     description_key: str = ""
     values: dict = dict

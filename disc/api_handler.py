@@ -11,7 +11,7 @@ from __init__ import (
     DISPLAY_TEAM_NAME_POSSESSIVE,
 )
 from manifest import ENDPOINTS, GLOBAL_MESSAGES
-from models import DiscString, DiscException, MatchStatus
+from models import DiscEmbed, DiscException, MatchStatus
 
 
 def query(endpoint: str) -> dict:
@@ -24,7 +24,7 @@ def query(endpoint: str) -> dict:
         return {}
 
 
-def get_match_status() -> DiscString:
+def get_match_status() -> DiscEmbed:
     # TODO: Remove json file and use a database
     if os.path.exists("data/match.json"):
         with open("data/match.json") as f:
@@ -46,31 +46,31 @@ def get_match_status() -> DiscString:
         "arena": r["venue"]["name"],
     }
 
-    discstring = DiscString(values=values, hex_color=0x00FF00)
+    disc_embed = DiscEmbed(values=values, hex_color=0x00FF00)
 
     just_started = r["status"] == MatchStatus.InProgress.value and old_status["status"] == MatchStatus.Scheduled.value
     just_ended = r["status"] == MatchStatus.Finished.value and old_status["status"] == MatchStatus.InProgress.value
 
     if just_started:
-        discstring.title_key = "match_start_title"
-        discstring.description_key = "match_start"
-        discstring.hex_color = 0x00FF00
+        disc_embed.title_key = "match_start_title"
+        disc_embed.description_key = "match_start"
+        disc_embed.hex_color = 0x00FF00
     elif just_ended:
-        discstring.title_key = "match_end_title"
-        discstring.description_key = "match_end"
-        discstring.hex_color = 0xFF0000
+        disc_embed.title_key = "match_end_title"
+        disc_embed.description_key = "match_end"
+        disc_embed.hex_color = 0xFF0000
 
-    discstring.extra_data = {
+    disc_embed.extra_data = {
         "presence_string": GLOBAL_MESSAGES["presence"].format(**values),
         "active_match": r["status"] == MatchStatus.InProgress.value,
     }
 
     with open("data/match.json", "w") as f:
         json.dump(r, f)
-    return discstring
+    return disc_embed
 
 
-def get_next_match() -> DiscString:
+def get_next_match() -> DiscEmbed:
     """Get information about the next match"""
     r = query(ENDPOINTS["status"])
     if not r or not r["status"] == MatchStatus.Scheduled.value:
@@ -92,7 +92,7 @@ def get_next_match() -> DiscString:
         "team_possessive": DISPLAY_TEAM_NAME_POSSESSIVE,
     }
 
-    return DiscString(title_key="next_match_title", description_key="next_match", values=values, hex_color=0xFFA500)
+    return DiscEmbed(title_key="next_match_title", description_key="next_match", values=values, hex_color=0xFFA500)
 
 
 def _get_scorer_info() -> str:
@@ -114,7 +114,7 @@ def _get_scorer_info() -> str:
     return output_message
 
 
-def get_goal() -> DiscString:
+def get_goal() -> DiscEmbed:
     """Get information about the goal and the scorer (if there was a goal)"""
     # TODO: Remove json file and use a database
     if os.path.exists("data/score.json"):
@@ -147,20 +147,20 @@ def get_goal() -> DiscString:
         "opponent_score": opponent["score"],
     }
 
-    discstring = DiscString(values=values)
+    disc_embed = DiscEmbed(values=values)
 
     if int(old_score["team"]["score"]) < int(team["score"]):
-        discstring.title_key = "goal_home_title"
-        discstring.description_key = "goal_home"
-        discstring.hex_color = 0x00FF00
-        discstring.appended_description = _get_scorer_info()
+        disc_embed.title_key = "goal_home_title"
+        disc_embed.description_key = "goal_home"
+        disc_embed.hex_color = 0x00FF00
+        disc_embed.appended_description = _get_scorer_info()
     elif int(old_score["opponent"]["score"]) < int(opponent["score"]):
-        discstring.title_key = "goal_away_title"
-        discstring.description_key = "goal_away"
-        discstring.hex_color = 0xFF0000
+        disc_embed.title_key = "goal_away_title"
+        disc_embed.description_key = "goal_away"
+        disc_embed.hex_color = 0xFF0000
 
     data = {"team": team, "opponent": opponent}
     with open("data/score.json", "w") as f:
         json.dump(data, f)
 
-    return discstring
+    return disc_embed

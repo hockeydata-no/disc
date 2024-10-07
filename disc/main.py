@@ -5,7 +5,7 @@ import api_handler as data
 import subscribers
 from __init__ import DISPLAYED_TEAM_NAME, DISCORD_TOKEN, LANGUAGE
 from manifest import FORMAT_MESSAGES, SUPPORTED_LANGUAGES
-from models import DiscString, DiscException
+from models import DiscEmbed, DiscException
 
 intents = discord.Intents.default()
 
@@ -18,12 +18,12 @@ class HockeyDisc(discord.Client):
         if self.active_match:
             await self.get_score()
 
-    async def send_embed(self, discstring: DiscString) -> None:
+    async def send_embed(self, disc_embed: DiscEmbed) -> None:
         """Send an embed to all subscribed channels"""
-        if not discstring.title_key:
+        if not disc_embed.title_key:
             return
         for settings, channel in subscribers.get_channels().items():
-            embed = discstring.embed(lang=settings.get("lang", "en"))
+            embed = disc_embed.embed(lang=settings.get("lang", "en"))
             await self.get_channel(channel).send(embed=embed)
 
     async def update_status(self, match_status):
@@ -89,16 +89,16 @@ async def subscribe(ctx, language: SUPPORTED_LANGUAGES = LANGUAGE):
 async def channels(ctx):
     """List all active channels"""
     active_channels = [ch for ch in subscribers.get_channels().keys() if ctx.guild.get_channel(int(ch))]
-    discstring = DiscString(
+    disc_embed = DiscEmbed(
         title_key="active_channels_title",
         description_key="no_active_channels",
         values={"active_channels": "\n".join([f"<#{ch}>" for ch in active_channels])},
         hex_color=0xFF0000,
     )
     if active_channels:
-        discstring.description_key = "active_channels"
-        discstring.hex_color = 0x00FF00
-    await ctx.response.send_message(embed=discstring.embed(lang=subscribers.get_lang(ctx.channel.id)), ephemeral=True)
+        disc_embed.description_key = "active_channels"
+        disc_embed.hex_color = 0x00FF00
+    await ctx.response.send_message(embed=disc_embed.embed(lang=subscribers.get_lang(ctx.channel.id)), ephemeral=True)
 
 
 @tree.command(name="next")
