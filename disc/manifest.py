@@ -15,6 +15,7 @@ GLOBAL_MESSAGES = {
     "presence": "{team} {team_score} - {opponent_score} {opponent}",
 }
 
+# TODO: Setup something more scalable than a dictionary
 FORMAT_MESSAGES = {
     "en": {
         "subscribe": "Channel is now subscribed. Forza {team}!",
@@ -33,6 +34,7 @@ FORMAT_MESSAGES = {
         "next_match_title": "[{tournament_name}] {team_possessive} next match",
         "next_match": "**{team}** vs **{opponent}** will play in **{arena}, {city}** {timestamp}\n\n{long_datetime}",
         "no_next_match": "No scheduled match found",
+        "language_set": "Language has been set to English",
     },
     "no": {
         "subscribe": "Kanalen er nå abonnert. Forza {team}!",
@@ -50,6 +52,32 @@ FORMAT_MESSAGES = {
         "next_match_title": "[{tournament_name}] {team_possessive} neste kamp",
         "next_match": "**{team}** spiller mot **{opponent}** i **{arena}, {city}** {timestamp}\n\n{long_datetime}",
         "no_next_match": "Ingen planlagte kamper funnet",
+        "language_set": "Språket er endret til Norsk",
+    },
+}
+
+COMMANDS = {
+    "en": {
+        "next_match": "next-match",
+        "next_match_description": "Get information about the next match",
+        "subscribe": "subscribe",
+        "subscribe_description": "Subscribe the current channel to live updates in the specified language",
+        "channels": "channels",
+        "channels_description": "List all active channels in the server",
+        "set_language": "set-language",
+        "set_language_description": "Change the language of the current channel",
+        "opt_language": "language",
+    },
+    "no": {
+        "next_match": "neste-kamp",
+        "next_match_description": "Få informasjon om neste kamp",
+        "subscribe": "abonner",
+        "subscribe_description": "Abonner på direkteoppdateringer for den gjeldende kanalen i angitt språk",
+        "channels": "kanaler",
+        "channels_description": "Vis alle aktive kanaler i serveren",
+        "set_language": "endre-språk",
+        "set_language_description": "Endre språket for den gjeldende kanalen",
+        "opt_language": "språk",
     },
 }
 

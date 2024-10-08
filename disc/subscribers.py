@@ -27,6 +27,15 @@ def get_settings(channel_id: str) -> dict:
     return data.get(channel_id, {"lang": LANGUAGE})
 
 
+def set_lang(channel_id: str, lang: str) -> None:
+    channel_id = str(channel_id)
+    with open("data/subscribers.json") as f:
+        data = json.load(f)
+    data[channel_id]["lang"] = lang
+    with open("data/subscribers.json", "w") as f:
+        json.dump(data, f)
+
+
 def toggle(channel_id: str, lang=LANGUAGE) -> bool:
     # TODO: Use a database instead of a json file
     channel_id = str(channel_id)

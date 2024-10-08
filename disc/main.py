@@ -1,13 +1,11 @@
 import discord
 from discord.ext import tasks
 
-import api_handler as data
+import api_handler
+import commands
 import subscribers
-from __init__ import DISPLAYED_TEAM_NAME, DISCORD_TOKEN, LANGUAGE
-from manifest import FORMAT_MESSAGES, SUPPORTED_LANGUAGES
+from __init__ import DISCORD_TOKEN
 from models import DiscEmbed, DiscException
-
-intents = discord.Intents.default()
 
 
 class HockeyDisc(discord.Client):
@@ -38,7 +36,7 @@ class HockeyDisc(discord.Client):
     async def get_match_status(self):
         """Get the current match status and update the presence"""
         try:
-            match_status = data.get_match_status()
+            match_status = api_handler.get_match_status()
         except DiscException:
             self.active_match = False
             return
@@ -51,17 +49,18 @@ class HockeyDisc(discord.Client):
 
     async def get_score(self):
         try:
-            score_string = data.get_goal()
+            score_string = api_handler.get_goal()
             await self.send_embed(score_string)
         except DiscException:
             pass
 
     @tasks.loop(seconds=5)
     async def _loop(self):
+        # Every endpoint has a TTL cache, so we can safely call this every 5 seconds (though it might be a bit overkill)
         await self._update()
 
 
-client = HockeyDisc(intents=intents)
+client = HockeyDisc(intents=discord.Intents.default())
 tree = discord.app_commands.CommandTree(client)
 
 
@@ -69,51 +68,9 @@ tree = discord.app_commands.CommandTree(client)
 async def on_ready():
     print(f"Logged in as {client.user.name} ({client.user.id})")
     client._loop.start()
+    await commands.add_commands(tree)
     await tree.sync()
 
 
-@tree.command(name="subscribe")
-async def subscribe(ctx, language: SUPPORTED_LANGUAGES = LANGUAGE):
-    """Subscribe the current channel to live updates"""
-    _lang = subscribers.get_lang(ctx.channel.id)  # TODO: Don't read the file twice
-    subscribing = subscribers.toggle(ctx.channel.id, lang=language)
-    if subscribing:
-        response = FORMAT_MESSAGES[language]["subscribe"].format(team=DISPLAYED_TEAM_NAME)
-        await ctx.response.send_message(response)
-    else:
-        response = FORMAT_MESSAGES[_lang]["unsubscribe"]
-        await ctx.response.send_message(response)
-
-
-@tree.command(name="channels")
-async def channels(ctx):
-    """List all active channels"""
-    active_channels = [ch for ch in subscribers.get_channels().keys() if ctx.guild.get_channel(int(ch))]
-    disc_embed = DiscEmbed(
-        title_key="active_channels_title",
-        description_key="no_active_channels",
-        values={"active_channels": "\n".join([f"<#{ch}>" for ch in active_channels])},
-        hex_color=0xFF0000,
-    )
-    if active_channels:
-        disc_embed.description_key = "active_channels"
-        disc_embed.hex_color = 0x00FF00
-    await ctx.response.send_message(embed=disc_embed.embed(lang=subscribers.get_lang(ctx.channel.id)), ephemeral=True)
-
-
-@tree.command(name="next")
-async def next_match(ctx):
-    """Get information about the next match"""
-    lang = subscribers.get_lang(ctx.channel.id)
-    try:
-        match_string = data.get_next_match()
-        embed = match_string.embed(lang=lang)
-        await ctx.response.send_message(embed=embed)
-    except DiscException:
-        if "no_next_match" not in FORMAT_MESSAGES[lang]:
-            lang = "en"
-        await ctx.response.send_message(FORMAT_MESSAGES[lang]["no_next_match"], ephemeral=True)
-        return
-
-
-client.run(DISCORD_TOKEN)
+if __name__ == "__main__":
+    client.run(DISCORD_TOKEN)

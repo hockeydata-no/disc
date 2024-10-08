@@ -38,6 +38,7 @@ class DiscEmbed:
             return msg
 
     def embed(self, lang=LANGUAGE) -> discord.Embed:
+        # TODO: Use a more sophisticated way to translate the messages than just using a dictionary
         title_lang = lang if self.title_key in FORMAT_MESSAGES[lang] else "en"
         description_lang = lang if self.description_key in FORMAT_MESSAGES[lang] else "en"
 
