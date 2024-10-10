@@ -2,6 +2,7 @@ import json
 import os
 from datetime import datetime
 
+import cachetools.func
 import requests
 
 from __init__ import (
@@ -14,6 +15,7 @@ from manifest import ENDPOINTS, GLOBAL_MESSAGES
 from models import DiscEmbed, DiscException, MatchStatus
 
 
+@cachetools.func.ttl_cache(ttl=15)
 def query(endpoint: str) -> dict:
     try:
         r = requests.get(endpoint, headers={"HockeyData-API-Key": HOCKEYDATA_API_KEY})
@@ -61,7 +63,6 @@ def get_match_status() -> DiscEmbed:
         disc_embed.hex_color = 0xFF0000
 
     disc_embed.extra_data = {
-        "presence_string": GLOBAL_MESSAGES["presence"].format(**values),
         "active_match": r["status"] == MatchStatus.InProgress.value,
     }
 
@@ -112,6 +113,24 @@ def _get_scorer_info() -> str:
         output_message += f"\n{GLOBAL_MESSAGES['assist_info'].format(assist=assist_name)}"
 
     return output_message
+
+
+def get_presence_string() -> str:
+    """Get the presence string for the bot"""
+    r = query(ENDPOINTS["score"])
+    if not r:
+        raise DiscException("No data")
+
+    is_home = r["homeTeam"]["team"] in HOCKEYDATA_TEAM_NAME
+
+    values = {
+        "team_score": r["homeTeam"]["score"] if is_home else r["awayGoals"]["score"],
+        "opponent_score": r["awayTeam"]["score"] if is_home else r["homeGoals"]["score"],
+        "opponent": r["awayTeam"]["team"] if is_home else r["homeTeam"]["team"],
+        "team": DISPLAYED_TEAM_NAME,
+    }
+
+    return GLOBAL_MESSAGES["presence"].format(**values)
 
 
 def get_goal() -> DiscEmbed:

@@ -20,14 +20,14 @@ class HockeyDisc(discord.Client):
         """Send an embed to all subscribed channels"""
         if not disc_embed.title_key:
             return
-        for settings, channel in subscribers.get_channels().items():
+        for channel, settings in subscribers.get_channels().items():
             embed = disc_embed.embed(lang=settings.get("lang", "en"))
-            await self.get_channel(channel).send(embed=embed)
+            await self.get_channel(int(channel)).send(embed=embed)
 
     async def update_status(self, match_status):
         """Update the presence of the bot"""
         if match_status.extra_data.get("active_match"):
-            await self.change_presence(activity=discord.Game(name=match_status.extra_data["presence_string"]))
+            await self.change_presence(activity=discord.Game(name=api_handler.get_presence_string()))
             self.active_match = True
         else:
             await self.change_presence(activity=None)
