@@ -5,7 +5,7 @@ import api_handler
 import commands
 import subscribers
 from __init__ import DISCORD_TOKEN
-from models import DiscEmbed, DiscException
+from models import DiscEmbed, DiscException, BaseEmbed
 
 
 class HockeyDisc(discord.Client):
@@ -16,13 +16,15 @@ class HockeyDisc(discord.Client):
         if self.active_match:
             await self.get_score()
 
-    async def send_embed(self, disc_embed: DiscEmbed) -> None:
+    async def send_embed(self, disc_embed: BaseEmbed) -> None:
         """Send an embed to all subscribed channels"""
-        if not disc_embed.title_key:
+        # If we use a DiscEmbed (uses title keys), we don't want to send the embed if the title key is missing
+        if isinstance(type(disc_embed), DiscEmbed) and not disc_embed.title_key:
             return
         for channel, settings in subscribers.get_channels().items():
             embed = disc_embed.embed(lang=settings.get("lang", "en"))
-            await self.get_channel(int(channel)).send(embed=embed)
+            files = [discord.File(image.fp, image.filename) for image in disc_embed.files if image]
+            await self.get_channel(int(channel)).send(embed=embed, files=files)
 
     async def update_status(self, match_status):
         """Update the presence of the bot"""

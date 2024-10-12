@@ -1,8 +1,11 @@
 import json
 import os
+import tempfile
 from datetime import datetime
+from typing import Union
 
 import cachetools.func
+import discord
 import requests
 
 from __init__ import (
@@ -16,14 +19,39 @@ from models import DiscEmbed, DiscException, MatchStatus
 
 
 @cachetools.func.ttl_cache(ttl=15)
-def query(endpoint: str) -> dict:
+def query(endpoint: str, as_json: bool = True) -> Union[dict, requests.Response]:
     try:
         r = requests.get(endpoint, headers={"HockeyData-API-Key": HOCKEYDATA_API_KEY})
         r.raise_for_status()
-        return r.json()
+        if as_json:
+            return r.json()
+        return r
     except requests.exceptions.RequestException as e:
         print(e)
         return {}
+
+
+def get_team_image(team_name: str = DISPLAYED_TEAM_NAME) -> discord.File:
+    """Get the image of the team"""
+    r = query(ENDPOINTS["team_image"].format(team_name=team_name), as_json=False)
+    if not r:
+        raise DiscException("No image found")
+
+    # TODO: We should probably delete temp files on a regular basis, or store them a different way
+    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+        temp_file.write(r.content)
+        return discord.File(temp_file.name, "team_image.png")
+
+
+def get_player_image(player_id: int, image_type: str = "") -> discord.File:
+    """Get the image URL of a player"""
+    r = query(ENDPOINTS["player_image"].format(player_id=player_id, image_type=image_type), as_json=False)
+    if not r:
+        raise DiscException("No image found")
+
+    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+        temp_file.write(r.content)
+        return discord.File(temp_file.name, "player_image.png")
 
 
 def get_match_status() -> DiscEmbed:
@@ -70,9 +98,11 @@ def get_match_status() -> DiscEmbed:
             if winner:
                 disc_embed.hex_color = 0x00FF00
                 disc_embed.description_key = "match_win"
+                disc_embed.thumbnail = get_team_image(values["team"])
             else:
                 disc_embed.hex_color = 0xFF0000
                 disc_embed.description_key = "match_loss"
+                disc_embed.thumbnail = get_team_image(values["opponent"])
 
     disc_embed.extra_data = {
         "active_match": r["status"] == MatchStatus.InProgress.value,
@@ -97,7 +127,6 @@ def get_next_match() -> DiscEmbed:
         "opponent": r["awayTeam"]["fullName"] if is_home else r["homeTeam"]["fullName"],
         "team": DISPLAYED_TEAM_NAME,
         "arena": r["venue"]["name"],
-        "city": r["venue"]["city"],
         "timestamp": f"<t:{int(utc_date.timestamp())}:R>",
         "long_datetime": f"<t:{int(utc_date.timestamp())}:F>",
         "team_possessive": DISPLAY_TEAM_NAME_POSSESSIVE,
@@ -106,22 +135,27 @@ def get_next_match() -> DiscEmbed:
     return DiscEmbed(title_key="next_match_title", description_key="next_match", values=values, hex_color=0xFFA500)
 
 
-def _get_scorer_info() -> str:
+def _get_scorer_info() -> dict:
     """Get information about the goalscorer and assists"""
     r = query(ENDPOINTS["goal_scorer"])
     if not r:
-        return ""
+        return {}
 
     scorer = r["playerinfo"]["scorer"]
     assists = r["playerinfo"]["assists"]
 
-    output_message = GLOBAL_MESSAGES["scorer_info"].format(scorer=scorer["fullName"], jersey=scorer["jerseyNumber"])
+    output_message = (
+        f"\n{GLOBAL_MESSAGES['scorer_info'].format(scorer=scorer['fullName'], jersey=scorer['jerseyNumber'])}"
+    )
     for assist in assists:
         output_message += (
             f"\n{GLOBAL_MESSAGES['assist_info'].format(assist=assist["fullName"], jersey=assist['jerseyNumber'])}"
         )
 
-    return output_message
+    return {
+        "appended_description": output_message,
+        "player_id": scorer["id"],
+    }
 
 
 def get_presence_string() -> str:
@@ -181,7 +215,10 @@ def get_goal() -> DiscEmbed:
         disc_embed.title_key = "goal_home_title"
         disc_embed.description_key = "goal_home"
         disc_embed.hex_color = 0x00FF00
-        disc_embed.appended_description = _get_scorer_info()
+        scorer_info = _get_scorer_info()
+        if scorer_info:
+            disc_embed.appended_description = scorer_info["appended_description"]
+            disc_embed.thumbnail = get_player_image(scorer_info["player_id"], image_type="goal")
     elif int(old_score["opponent"]["score"]) < int(opponent["score"]):
         disc_embed.title_key = "goal_away_title"
         disc_embed.description_key = "goal_away"

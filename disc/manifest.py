@@ -6,6 +6,8 @@ ENDPOINTS = {
     "score": f"{HOCKEYDATA_HOST}/live/score",
     "goal_scorer": f"{HOCKEYDATA_HOST}/live/recent-goal-scorer-stats",
     "status": f"{HOCKEYDATA_HOST}/live/match",
+    "player_image": f"{HOCKEYDATA_HOST}/media/player/{{player_id}}?type={{image_type}}",
+    "team_image": f"{HOCKEYDATA_HOST}/media/team/search/logo/{{team_name}}",
 }
 
 # Global messsages cannot be translated

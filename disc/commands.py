@@ -53,8 +53,9 @@ async def next_match(ctx) -> None:
     lang = subscribers.get_lang(ctx.channel.id)
     try:
         match_string = api_handler.get_next_match()
+        match_string.thumbnail = api_handler.get_team_image()
         embed = match_string.embed(lang=lang)
-        await ctx.response.send_message(embed=embed)
+        await ctx.response.send_message(embed=embed, files=match_string.files)
     except DiscException:
         if "no_next_match" not in FORMAT_MESSAGES[lang]:
             lang = "en"
