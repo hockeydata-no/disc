@@ -10,8 +10,8 @@ ENDPOINTS = {
 
 # Global messsages cannot be translated
 GLOBAL_MESSAGES = {
-    "scorer_info": "Scorer: #{jersey}, **{scorer}**",
-    "assist_info": "Assist: #{jersey}, **{assist}**",
+    "scorer_info": "Scorer: **#{jersey} {scorer}**",
+    "assist_info": "Assist: **#{jersey} {assist}**",
     "presence": "{team} {team_score} - {opponent_score} {opponent}",
 }
 
