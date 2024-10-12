@@ -4,7 +4,7 @@ from discord.ext import tasks
 import api_handler
 import commands
 import subscribers
-from __init__ import DISCORD_TOKEN
+from __init__ import DISCORD_TOKEN, DISPLAYED_TEAM_NAME
 from models import DiscEmbed, DiscException, BaseEmbed
 
 
@@ -29,10 +29,14 @@ class HockeyDisc(discord.Client):
     async def update_status(self, match_status):
         """Update the presence of the bot"""
         if match_status.extra_data.get("active_match"):
-            await self.change_presence(activity=discord.Game(name=api_handler.get_presence_string()))
+            await self.change_presence(
+                activity=discord.CustomActivity(name=f"{api_handler.get_presence_string()} 🎉🏒", emoji="🏒")
+            )
             self.active_match = True
         else:
-            await self.change_presence(activity=None)
+            await self.change_presence(
+                activity=discord.CustomActivity(name=f"Forza {DISPLAYED_TEAM_NAME}! 🥅🏒", emoji="🏒")
+            )
             self.active_match = False
 
     async def get_match_status(self):
