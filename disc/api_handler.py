@@ -60,11 +60,19 @@ def get_match_status() -> DiscEmbed:
     elif just_ended:
         disc_embed.title_key = "match_end_title"
         disc_embed.description_key = "match_end"
-        disc_embed.hex_color = 0xFF0000
+        disc_embed.hex_color = 0xFFA500
         score = query(ENDPOINTS["score"])
+
         if score:
             disc_embed.values["team_score"] = score["homeTeam"]["score"] if is_home else score["awayTeam"]["score"]
             disc_embed.values["opponent_score"] = score["awayTeam"]["score"] if is_home else score["homeTeam"]["score"]
+            winner = disc_embed.values["team_score"] > disc_embed.values["opponent_score"]
+            if winner:
+                disc_embed.hex_color = 0x00FF00
+                disc_embed.description_key = "match_win"
+            else:
+                disc_embed.hex_color = 0xFF0000
+                disc_embed.description_key = "match_loss"
 
     disc_embed.extra_data = {
         "active_match": r["status"] == MatchStatus.InProgress.value,
