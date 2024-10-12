@@ -40,18 +40,18 @@ def get_match_status() -> DiscEmbed:
 
     is_home = r["homeTeam"]["fullName"] in HOCKEYDATA_TEAM_NAME
 
+    just_started = r["status"] == MatchStatus.InProgress.value and old_status["status"] == MatchStatus.Scheduled.value
+    just_ended = r["status"] == MatchStatus.Finished.value and old_status["status"] == MatchStatus.InProgress.value
+
     values = {
-        "team_score": r["homeGoals"] if is_home else r["awayGoals"],
-        "opponent_score": r["awayGoals"] if is_home else r["homeGoals"],
         "opponent": r["awayTeam"]["fullName"] if is_home else r["homeTeam"]["fullName"],
         "team": DISPLAYED_TEAM_NAME,
         "arena": r["venue"]["name"],
+        "team_score": "Error",
+        "opponent_score": "Error",
     }
 
     disc_embed = DiscEmbed(values=values, hex_color=0x00FF00)
-
-    just_started = r["status"] == MatchStatus.InProgress.value and old_status["status"] == MatchStatus.Scheduled.value
-    just_ended = r["status"] == MatchStatus.Finished.value and old_status["status"] == MatchStatus.InProgress.value
 
     if just_started:
         disc_embed.title_key = "match_start_title"
@@ -61,6 +61,10 @@ def get_match_status() -> DiscEmbed:
         disc_embed.title_key = "match_end_title"
         disc_embed.description_key = "match_end"
         disc_embed.hex_color = 0xFF0000
+        score = query(ENDPOINTS["score"])
+        if score:
+            disc_embed.values["team_score"] = score["homeTeam"]["score"] if is_home else score["awayTeam"]["score"]
+            disc_embed.values["opponent_score"] = score["awayTeam"]["score"] if is_home else score["homeTeam"]["score"]
 
     disc_embed.extra_data = {
         "active_match": r["status"] == MatchStatus.InProgress.value,
@@ -81,9 +85,7 @@ def get_next_match() -> DiscEmbed:
     utc_date = datetime.fromisoformat(r["date"])
 
     values = {
-        "tournament_name": r["tournament"]["fullName"],
-        "team_score": r["homeGoals"] if is_home else r["awayGoals"],
-        "opponent_score": r["awayGoals"] if is_home else r["homeGoals"],
+        "tournament_name": r["tournament"]["name"],
         "opponent": r["awayTeam"]["fullName"] if is_home else r["homeTeam"]["fullName"],
         "team": DISPLAYED_TEAM_NAME,
         "arena": r["venue"]["name"],
@@ -107,10 +109,10 @@ def _get_scorer_info() -> str:
 
     scorer_name = f"{scorer['firstName']} {scorer['lastName']}"
 
-    output_message = GLOBAL_MESSAGES["scorer_info"].format(scorer=scorer_name)
+    output_message = GLOBAL_MESSAGES["scorer_info"].format(scorer=scorer_name, jersey=scorer["jersey"])
     for assist in assists:
         assist_name = f"{assist['firstName']} {assist['lastName']}"
-        output_message += f"\n{GLOBAL_MESSAGES['assist_info'].format(assist=assist_name)}"
+        output_message += f"\n{GLOBAL_MESSAGES['assist_info'].format(assist=assist_name, jersey=assist['jersey'])}"
 
     return output_message
 
@@ -124,8 +126,8 @@ def get_presence_string() -> str:
     is_home = r["homeTeam"]["team"] in HOCKEYDATA_TEAM_NAME
 
     values = {
-        "team_score": r["homeTeam"]["score"] if is_home else r["awayGoals"]["score"],
-        "opponent_score": r["awayTeam"]["score"] if is_home else r["homeGoals"]["score"],
+        "team_score": r["homeTeam"]["score"] if is_home else r["awayTeam"]["score"],
+        "opponent_score": r["awayTeam"]["score"] if is_home else r["homeTeam"]["score"],
         "opponent": r["awayTeam"]["team"] if is_home else r["homeTeam"]["team"],
         "team": DISPLAYED_TEAM_NAME,
     }

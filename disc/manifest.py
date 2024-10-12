@@ -3,15 +3,15 @@ from typing import Literal
 from __init__ import HOCKEYDATA_HOST
 
 ENDPOINTS = {
-    "score": f"{HOCKEYDATA_HOST}/live/score?provider=fangroup",
+    "score": f"{HOCKEYDATA_HOST}/live/score",
     "goal_scorer": f"{HOCKEYDATA_HOST}/live/recent-goal-scorer-stats",
     "status": f"{HOCKEYDATA_HOST}/live/match",
 }
 
 # Global messsages cannot be translated
 GLOBAL_MESSAGES = {
-    "scorer_info": "Scorer: **{scorer}**",
-    "assist_info": "Assist: **{assist}**",
+    "scorer_info": "Scorer: #{jersey}, **{scorer}**",
+    "assist_info": "Assist: #{jersey}, **{assist}**",
     "presence": "{team} {team_score} - {opponent_score} {opponent}",
 }
 
@@ -32,7 +32,7 @@ FORMAT_MESSAGES = {
         "match_start_title": "Match started",
         "match_end_title": "Match ended",
         "next_match_title": "[{tournament_name}] {team_possessive} next match",
-        "next_match": "**{team}** vs **{opponent}** will play in **{arena}, {city}** {timestamp}\n\n{long_datetime}",
+        "next_match": "**{team}** vs **{opponent}** will play in **{arena}** {timestamp}\n\n{long_datetime}",
         "no_next_match": "No scheduled match found",
         "language_set": "Language has been set to English",
     },
@@ -50,7 +50,7 @@ FORMAT_MESSAGES = {
         "match_start_title": "Kampen har startet",
         "match_end_title": "Kampen er over",
         "next_match_title": "[{tournament_name}] {team_possessive} neste kamp",
-        "next_match": "**{team}** spiller mot **{opponent}** i **{arena}, {city}** {timestamp}\n\n{long_datetime}",
+        "next_match": "**{team}** spiller mot **{opponent}** i **{arena}** {timestamp}\n\n{long_datetime}",
         "no_next_match": "Ingen planlagte kamper funnet",
         "language_set": "Språket er endret til Norsk",
     },
