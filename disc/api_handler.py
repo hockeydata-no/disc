@@ -107,12 +107,11 @@ def _get_scorer_info() -> str:
     scorer = r["playerinfo"]["scorer"]
     assists = r["playerinfo"]["assists"]
 
-    scorer_name = f"{scorer['firstName']} {scorer['lastName']}"
-
-    output_message = GLOBAL_MESSAGES["scorer_info"].format(scorer=scorer_name, jersey=scorer["jersey"])
+    output_message = GLOBAL_MESSAGES["scorer_info"].format(scorer=scorer["fullName"], jersey=scorer["jerseyNumber"])
     for assist in assists:
-        assist_name = f"{assist['firstName']} {assist['lastName']}"
-        output_message += f"\n{GLOBAL_MESSAGES['assist_info'].format(assist=assist_name, jersey=assist['jersey'])}"
+        output_message += (
+            f"\n{GLOBAL_MESSAGES['assist_info'].format(assist=assist["fullName"], jersey=assist['jerseyNumber'])}"
+        )
 
     return output_message
 
