@@ -215,13 +215,16 @@ def get_goal() -> DiscEmbed:
         disc_embed.title_key = "goal_home_title"
         disc_embed.description_key = "goal_home"
         disc_embed.hex_color = 0x00FF00
+        disc_embed.thumbnail = get_team_image(values["team"])
         scorer_info = _get_scorer_info()
         if scorer_info:
             disc_embed.appended_description = scorer_info["appended_description"]
+            # Overwrite the thumbnail with the player image if there is one
             disc_embed.thumbnail = get_player_image(scorer_info["player_id"], image_type="goal")
     elif int(old_score["opponent"]["score"]) < int(opponent["score"]):
         disc_embed.title_key = "goal_away_title"
         disc_embed.description_key = "goal_away"
+        disc_embed.thumbnail = get_team_image(values["opponent"])
         disc_embed.hex_color = 0xFF0000
 
     data = {"team": team, "opponent": opponent}
