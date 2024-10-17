@@ -57,7 +57,7 @@ def get_player_image(player_id: int, image_type: str = "") -> discord.File:
 def get_match_status() -> DiscEmbed:
     # TODO: Remove json file and use a database
     if os.path.exists("data/match.json"):
-        with open("data/match.json") as f:
+        with open("data/match.json", encoding="utf-8") as f:
             old_status = json.load(f)
     else:
         old_status = {"status": MatchStatus.Scheduled.value}
@@ -108,7 +108,7 @@ def get_match_status() -> DiscEmbed:
         "active_match": r["status"] == MatchStatus.InProgress.value,
     }
 
-    with open("data/match.json", "w") as f:
+    with open("data/match.json", "w", encoding="utf-8") as f:
         json.dump(r, f)
     return disc_embed
 
@@ -180,7 +180,7 @@ def get_goal() -> DiscEmbed:
     """Get information about the goal and the scorer (if there was a goal)"""
     # TODO: Remove json file and use a database
     if os.path.exists("data/score.json"):
-        with open("data/score.json") as f:
+        with open("data/score.json", encoding="utf-8") as f:
             old_score = json.load(f)
     else:
         old_score = dict(
@@ -210,7 +210,7 @@ def get_goal() -> DiscEmbed:
     }
 
     data = {"team": team, "opponent": opponent}
-    with open("data/score.json", "w") as f:
+    with open("data/score.json", "w", encoding="utf-8") as f:
         json.dump(data, f)
 
     disc_embed = DiscEmbed(values=values)
