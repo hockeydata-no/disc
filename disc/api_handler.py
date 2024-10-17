@@ -1,12 +1,13 @@
 import json
 import os
-import tempfile
 from datetime import datetime
+from io import BytesIO
 from typing import Union
 
 import cachetools.func
 import discord
 import requests
+from PIL import Image
 
 from __init__ import (
     HOCKEYDATA_API_KEY,
@@ -31,16 +32,23 @@ def query(endpoint: str, as_json: bool = True) -> Union[dict, requests.Response]
         return {}
 
 
+def _convert_to_discord_file(image_bytes: bytes, size: tuple[int, int], filename: str) -> discord.File:
+    """Resize an image in bytes"""
+    image = Image.open(BytesIO(image_bytes))
+    image.thumbnail(size, resample=Image.Resampling.LANCZOS)
+
+    with BytesIO() as output:
+        image.save(output, format="webp")
+        output.seek(0)
+        return discord.File(output, filename=filename)
+
+
 def get_team_image(team_name: str = DISPLAYED_TEAM_NAME) -> discord.File:
     """Get the image of the team"""
     r = query(ENDPOINTS["team_image"].format(team_name=team_name), as_json=False)
     if not r:
         raise DiscException("No image found")
-
-    # TODO: We should probably delete temp files on a regular basis, or store them a different way
-    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-        temp_file.write(r.content)
-        return discord.File(temp_file.name, "team_image.png")
+    return _convert_to_discord_file(r.content, (512, 512), f"{team_name}.webp")
 
 
 def get_player_image(player_id: int, image_type: str = "") -> discord.File:
@@ -48,10 +56,7 @@ def get_player_image(player_id: int, image_type: str = "") -> discord.File:
     r = query(ENDPOINTS["player_image"].format(player_id=player_id, image_type=image_type), as_json=False)
     if not r:
         raise DiscException("No image found")
-
-    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-        temp_file.write(r.content)
-        return discord.File(temp_file.name, "player_image.png")
+    return _convert_to_discord_file(r.content, (800, 800), f"{player_id}.webp")
 
 
 def get_match_status() -> DiscEmbed:
@@ -209,10 +214,6 @@ def get_goal() -> DiscEmbed:
         "opponent_score": opponent["score"],
     }
 
-    data = {"team": team, "opponent": opponent}
-    with open("data/score.json", "w", encoding="utf-8") as f:
-        json.dump(data, f)
-
     disc_embed = DiscEmbed(values=values)
 
     if int(old_score["team"]["score"]) < int(team["score"]):
@@ -224,11 +225,21 @@ def get_goal() -> DiscEmbed:
         if scorer_info:
             disc_embed.appended_description = scorer_info["appended_description"]
             # Overwrite the thumbnail with the player image if there is one
-            disc_embed.thumbnail = get_player_image(scorer_info["player_id"], image_type="goal")
+            try:
+                disc_embed.thumbnail = get_player_image(scorer_info["player_id"], image_type="goal")
+            except DiscException:
+                pass
     elif int(old_score["opponent"]["score"]) < int(opponent["score"]):
         disc_embed.title_key = "goal_away_title"
         disc_embed.description_key = "goal_away"
         disc_embed.thumbnail = get_team_image(values["opponent"])
         disc_embed.hex_color = 0xFF0000
+
+    if not disc_embed.title_key:
+        raise DiscException("No goal")
+
+    data = {"team": team, "opponent": opponent}
+    with open("data/score.json", "w", encoding="utf-8") as f:
+        json.dump(data, f)
 
     return disc_embed
