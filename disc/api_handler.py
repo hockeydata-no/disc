@@ -209,6 +209,10 @@ def get_goal() -> DiscEmbed:
         "opponent_score": opponent["score"],
     }
 
+    data = {"team": team, "opponent": opponent}
+    with open("data/score.json", "w") as f:
+        json.dump(data, f)
+
     disc_embed = DiscEmbed(values=values)
 
     if int(old_score["team"]["score"]) < int(team["score"]):
@@ -226,9 +230,5 @@ def get_goal() -> DiscEmbed:
         disc_embed.description_key = "goal_away"
         disc_embed.thumbnail = get_team_image(values["opponent"])
         disc_embed.hex_color = 0xFF0000
-
-    data = {"team": team, "opponent": opponent}
-    with open("data/score.json", "w") as f:
-        json.dump(data, f)
 
     return disc_embed
