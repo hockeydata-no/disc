@@ -34,6 +34,7 @@ class BaseEmbed:
 
     def _handle_images(self, embed: discord.Embed) -> discord.Embed:
         if self.thumbnail:
+            self.thumbnail.fp.seek(0)
             embed.set_thumbnail(url=f"attachment://{self.thumbnail.filename}")
         return embed
 
