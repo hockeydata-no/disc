@@ -31,7 +31,7 @@ class HockeyDisc(discord.Client):
         """Update the presence of the bot"""
         if match_status.extra_data.get("active_match"):
             await self.change_presence(
-                activity=discord.CustomActivity(name=f"{api_handler.get_presence_string()} 🎉🏒", emoji="🏒")
+                activity=discord.CustomActivity(name=f"{api_handler.get_presence_string()}", emoji="🏒")
             )
             self.active_match = True
         else:
