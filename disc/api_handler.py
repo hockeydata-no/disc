@@ -235,11 +235,15 @@ def get_goal() -> DiscEmbed:
         disc_embed.thumbnail = get_team_image(values["opponent"])
         disc_embed.hex_color = 0xFF0000
 
+    data = {"team": team, "opponent": opponent}
+
+    home_different = int(old_score["team"]["score"]) != int(team["score"])
+    away_different = int(old_score["opponent"]["score"]) != int(opponent["score"])
+    if any([home_different, away_different]):
+        with open("data/score.json", "w", encoding="utf-8") as f:
+            json.dump(data, f)
+
     if not disc_embed.title_key:
         raise DiscException("No goal")
-
-    data = {"team": team, "opponent": opponent}
-    with open("data/score.json", "w", encoding="utf-8") as f:
-        json.dump(data, f)
 
     return disc_embed
