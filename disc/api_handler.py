@@ -46,11 +46,17 @@ def _convert_to_discord_file(image_bytes: bytes, size: tuple[int, int], filename
 def get_team_image(team_name: str = DISPLAYED_TEAM_NAME) -> discord.File:
     """Get the image of the team"""
     r = query(ENDPOINTS["team_image"].format(team_name=team_name), as_json=False)
-    team_name = team_name.replace("å", "a")
-    team_name = team_name.replace("ø", "o")
-    team_name = team_name.replace("æ", "ae")
     if not r:
         raise DiscException("No image found")
+    illegal_filename_characters = {
+        "Æ": "Ae",
+        "æ": "ae",
+        "Ø": "O",
+        "ø": "o",
+        "Å": "A",
+        "å": "a",
+    }
+    team_name = "".join([illegal_filename_characters.get(c, c) for c in team_name])
     return _convert_to_discord_file(r.content, (512, 512), f"{team_name}.webp")
 
 
