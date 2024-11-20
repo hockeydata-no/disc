@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from datetime import datetime
 from io import BytesIO
 from typing import Union
@@ -43,11 +44,8 @@ def _convert_to_discord_file(image_bytes: bytes, size: tuple[int, int], filename
         return discord.File(output, filename=filename)
 
 
-def get_team_image(team_name: str = DISPLAYED_TEAM_NAME) -> discord.File:
-    """Get the image of the team"""
-    r = query(ENDPOINTS["team_image"].format(team_name=team_name), as_json=False)
-    if not r:
-        raise DiscException("No image found")
+def normalize_filename(filename: str) -> str:
+    """Normalize a filename"""
     illegal_filename_characters = {
         "Æ": "Ae",
         "æ": "ae",
@@ -55,9 +53,18 @@ def get_team_image(team_name: str = DISPLAYED_TEAM_NAME) -> discord.File:
         "ø": "o",
         "Å": "A",
         "å": "a",
+        " ": "-",
     }
-    team_name = "".join([illegal_filename_characters.get(c, c) for c in team_name])
-    return _convert_to_discord_file(r.content, (512, 512), f"{team_name}.webp")
+    filename = "".join([illegal_filename_characters.get(c, c) for c in filename])
+    return re.sub(r"[^a-zA-Z0-9\-_]", "", filename)
+
+
+def get_team_image(team_name: str = DISPLAYED_TEAM_NAME) -> discord.File:
+    """Get the image of the team"""
+    r = query(ENDPOINTS["team_image"].format(team_name=team_name), as_json=False)
+    if not r:
+        raise DiscException("No image found")
+    return _convert_to_discord_file(r.content, (512, 512), f"{normalize_filename(team_name)}.webp")
 
 
 def get_player_image(player_id: int, image_type: str = "") -> discord.File:
