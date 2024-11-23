@@ -75,6 +75,12 @@ def get_player_image(player_id: int, image_type: str = "") -> discord.File:
     return _convert_to_discord_file(r.content, (800, 800), f"{player_id}.webp")
 
 
+def reset_score() -> None:
+    """Reset the score, used when a match has ended"""
+    if os.path.exists("data/score.json"):
+        os.remove("data/score.json")
+
+
 def get_match_status() -> DiscEmbed:
     # TODO: Remove json file and use a database
     if os.path.exists("data/match.json"):
@@ -124,6 +130,8 @@ def get_match_status() -> DiscEmbed:
                 disc_embed.hex_color = 0xFF0000
                 disc_embed.description_key = "match_loss"
                 disc_embed.thumbnail = get_team_image(values["opponent"])
+
+        reset_score()
 
     disc_embed.extra_data = {
         "active_match": r["status"] == MatchStatus.InProgress.value,
